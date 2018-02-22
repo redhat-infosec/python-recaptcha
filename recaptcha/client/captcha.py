@@ -1,7 +1,9 @@
 import urllib2, urllib
+import simplejson as json
 
 API_SSL_SERVER="https://www.google.com/recaptcha/api"
 API_SERVER="http://www.google.com/recaptcha/api"
+API_JS_LOCATION="https://www.google.com/recaptcha/api.js"
 VERIFY_SERVER="www.google.com"
 
 class RecaptchaResponse(object):
@@ -9,25 +11,36 @@ class RecaptchaResponse(object):
         self.is_valid = is_valid
         self.error_code = error_code
 
+def load_script(version=1):
+    """Gets the src code off google's site if needed (version 2)"""
+    if version == 2:
+        return """<script src='%s'></script>""" % API_JS_LOCATION
+    else:
+        return """"""
+
 def displayhtml (public_key,
                  use_ssl = False,
-                 error = None):
+                 error = None,
+                 version = 1):
     """Gets the HTML to display for reCAPTCHA
 
     public_key -- The public api key
     use_ssl -- Should the request be sent over ssl?
     error -- An error message to display (from RecaptchaResponse.error_code)"""
 
-    error_param = ''
-    if error:
-        error_param = '&error=%s' % error
-
-    if use_ssl:
-        server = API_SSL_SERVER
+    if version == 2:
+        return """<div class="g-recaptcha" data-sitekey="%s"></div>""" % public_key
     else:
-        server = API_SERVER
+        error_param = ''
+        if error:
+            error_param = '&error=%s' % error
 
-    return """<script type="text/javascript" src="%(ApiServer)s/challenge?k=%(PublicKey)s%(ErrorParam)s"></script>
+        if use_ssl:
+            server = API_SSL_SERVER
+        else:
+            server = API_SERVER
+
+        return """<script type="text/javascript" src="%(ApiServer)s/challenge?k=%(PublicKey)s%(ErrorParam)s"></script>
 
 <noscript>
   <iframe src="%(ApiServer)s/noscript?k=%(PublicKey)s%(ErrorParam)s" height="300" width="500" frameborder="0"></iframe><br />
@@ -44,7 +57,7 @@ def displayhtml (public_key,
 def submit (recaptcha_challenge_field,
             recaptcha_response_field,
             private_key,
-            remoteip):
+            remoteip, version=1):
     """
     Submits a reCAPTCHA request for verification. Returns RecaptchaResponse
     for the request
@@ -55,40 +68,71 @@ def submit (recaptcha_challenge_field,
     remoteip -- the user's ip address
     """
 
-    if not (recaptcha_response_field and recaptcha_challenge_field and
-            len (recaptcha_response_field) and len (recaptcha_challenge_field)):
-        return RecaptchaResponse (is_valid = False, error_code = 'incorrect-captcha-sol')
-    
-
     def encode_if_necessary(s):
         if isinstance(s, unicode):
             return s.encode('utf-8')
         return s
+    if version == 2:
+        request = urllib2.Request (
+                    url = "%s/siteverify" % API_SSL_SERVER,
+                    data = urllib.urlencode( {
+                        'secret': private_key,
+                        'response': recaptcha_response_field,
+                        'remoteip': remoteip } ),
+                    headers = {
+                        "Content-type": "application/x-www-form-urlencoded",
+                        "User-agent": "reCAPTCHA Python" }
+                    )
+        try:
+            response = urllib2.urlopen(request)
+            response_data = json.loads(response.read().decode("utf-8"))
 
-    params = urllib.urlencode ({
-            'privatekey': encode_if_necessary(private_key),
-            'remoteip' :  encode_if_necessary(remoteip),
-            'challenge':  encode_if_necessary(recaptcha_challenge_field),
-            'response' :  encode_if_necessary(recaptcha_response_field),
-            })
+            if response_data['success'] == True:
+                return RecaptchaResponse( is_valid=True )
+            else:
+                if 'error-codes' in response_data:
+                    error = encode_if_necessary(response_data['error-codes'])
+                else:
+                    error = 'Unknown error'
 
-    request = urllib2.Request (
-        url = "http://%s/recaptcha/api/verify" % VERIFY_SERVER,
-        data = params,
-        headers = {
-            "Content-type": "application/x-www-form-urlencoded",
-            "User-agent": "reCAPTCHA Python"
-            }
-        )
-    
-    httpresp = urllib2.urlopen (request)
+                return RecaptchaResponse( is_valid=False, error_code = error)
 
-    return_values = httpresp.read ().splitlines ();
-    httpresp.close();
+        except Exception, e:
+            return RecaptchaResponse( is_valid=False, error_code = 'request-failure: %s' % e)
 
-    return_code = return_values [0]
-
-    if (return_code == "true"):
-        return RecaptchaResponse (is_valid=True)
     else:
-        return RecaptchaResponse (is_valid=False, error_code = return_values [1])
+
+        if not (recaptcha_response_field and recaptcha_challenge_field and
+                len (recaptcha_response_field) and len (recaptcha_challenge_field)):
+            return RecaptchaResponse (is_valid = False, error_code = 'incorrect-captcha-sol')
+        
+
+
+        params = urllib.urlencode ({
+                'privatekey': encode_if_necessary(private_key),
+                'remoteip' :  encode_if_necessary(remoteip),
+                'challenge':  encode_if_necessary(recaptcha_challenge_field),
+                'response' :  encode_if_necessary(recaptcha_response_field),
+                })
+
+
+        request = urllib2.Request (
+            url = "https://%s/recaptcha/api/verify" % VERIFY_SERVER,
+            data = params,
+            headers = {
+                "Content-type": "application/x-www-form-urlencoded",
+                "User-agent": "reCAPTCHA Python"
+                }
+            )
+        
+        httpresp = urllib2.urlopen (request)
+
+        return_values = httpresp.read ().splitlines ();
+        httpresp.close();
+
+        return_code = return_values [0]
+
+        if (return_code == "true"):
+            return RecaptchaResponse (is_valid=True)
+        else:
+            return RecaptchaResponse (is_valid=False, error_code = return_values [1])

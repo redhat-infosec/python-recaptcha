@@ -3,18 +3,29 @@
 %endif
 
 Name:           python-recaptcha-client
-Version:        1.0.0
+Version:        2.0.0
 Release:        1%{?dist}
 Summary:        Python module for reCAPTCHA and reCAPTCHA Mailhide
 
 Group:          Development/Languages
 License:        MIT
-URL:            http://pypi.python.org/pypi/recaptcha-client
-Source0:        https://files.pythonhosted.org/packages/source/r/recaptcha-client/recaptcha-client-%{version}.tar.gz
+Source0:        https://github.com/redhat-infosec/python-recaptcha/releases/download/v%{version}/recaptcha-client-%{version}.tar.gz
+URL:            https://github.com/redhat-infosec/python-recaptcha
+       
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root
+
 
 BuildArch:      noarch
+%if ! (0%{?fedora} > 12 || 0%{?rhel} > 5)
+BuildRequires:  python-devel
+BuildRequires:  python-setuptools
+
+%else
 BuildRequires:  python2-devel
 BuildRequires:  python2-setuptools
+%endif
+
+
 
 %global _description\
 Provides a CAPTCHA for Python using the reCAPTCHA service. Does not require\
@@ -28,14 +39,24 @@ http://mailhide.recaptcha.net/apikey.
 %description %_description
 
 %package -n python2-recaptcha-client
+Group:      %{group}
 Summary: %summary
+%if ! (0%{?fedora} > 12 || 0%{?rhel} > 5)
+Requires:       python-crypto
+%else
 Requires:       python2-crypto
+%endif
+
+Obsoletes: python-recaptcha-client
+
 %{?python_provide:%python_provide python2-recaptcha-client}
 
 %description -n python2-recaptcha-client %_description
 
 %prep
 %setup -q -n recaptcha-client-%{version}
+#sed -i 's/^from ez_setup/#from ez_setup/' setup.py
+#sed -i 's/^use_setuptools()/#use_setuptools()/' setup.py
 
 
 %build
@@ -43,11 +64,10 @@ Requires:       python2-crypto
 
 
 %install
+
 rm -rf $RPM_BUILD_ROOT
 %{__python} setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
-
  
-
 %files -n python2-recaptcha-client
 %defattr(-,root,root,-)
 %doc PKG-INFO

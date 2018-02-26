@@ -53,11 +53,14 @@ def displayhtml (public_key,
         'ErrorParam' : error_param,
         }
 
+def encode_if_necessary(s):
+    if isinstance(s, unicode):
+        return s.encode('utf-8')
+    return s
 
-def submit (recaptcha_challenge_field,
-            recaptcha_response_field,
-            private_key,
-            remoteip, version=1):
+def submit(recaptcha_challenge_field,
+           recaptcha_response_field,
+           private_key, remoteip):
     """
     Submits a reCAPTCHA request for verification. Returns RecaptchaResponse
     for the request
@@ -68,71 +71,72 @@ def submit (recaptcha_challenge_field,
     remoteip -- the user's ip address
     """
 
-    def encode_if_necessary(s):
-        if isinstance(s, unicode):
-            return s.encode('utf-8')
-        return s
-    if version == 2:
-        request = urllib2.Request (
-                    url = "%s/siteverify" % API_SSL_SERVER,
-                    data = urllib.urlencode( {
-                        'secret': private_key,
-                        'response': recaptcha_response_field,
-                        'remoteip': remoteip } ),
-                    headers = {
-                        "Content-type": "application/x-www-form-urlencoded",
-                        "User-agent": "reCAPTCHA Python" }
-                    )
-        try:
-            response = urllib2.urlopen(request)
-            response_data = json.loads(response.read().decode("utf-8"))
+    if not (recaptcha_response_field and recaptcha_challenge_field and
+            len (recaptcha_response_field) and len (recaptcha_challenge_field)):
+        return RecaptchaResponse (is_valid = False, error_code = 'incorrect-captcha-sol')
 
-            if response_data['success'] == True:
-                return RecaptchaResponse( is_valid=True )
-            else:
-                if 'error-codes' in response_data:
-                    error = encode_if_necessary(response_data['error-codes'])
-                else:
-                    error = 'Unknown error'
+    params = urllib.urlencode ({
+            'privatekey': encode_if_necessary(private_key),
+            'remoteip' :  encode_if_necessary(remoteip),
+            'challenge':  encode_if_necessary(recaptcha_challenge_field),
+            'response' :  encode_if_necessary(recaptcha_response_field),
+            })
 
-                return RecaptchaResponse( is_valid=False, error_code = error)
+    request = urllib2.Request (
+        url = "https://%s/recaptcha/api/verify" % VERIFY_SERVER,
+        data = params,
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "User-agent": "reCAPTCHA Python"
+        }
+    )
 
-        except Exception, e:
-            return RecaptchaResponse( is_valid=False, error_code = 'request-failure: %s' % e)
+    httpresp = urllib2.urlopen (request)
 
+    return_values = httpresp.read ().splitlines ();
+    httpresp.close();
+
+    return_code = return_values [0]
+
+    if (return_code == "true"):
+        return RecaptchaResponse (is_valid=True)
     else:
+        return RecaptchaResponse (is_valid=False, error_code = return_values [1])
 
-        if not (recaptcha_response_field and recaptcha_challenge_field and
-                len (recaptcha_response_field) and len (recaptcha_challenge_field)):
-            return RecaptchaResponse (is_valid = False, error_code = 'incorrect-captcha-sol')
-        
+def v2submit(recaptcha_response_field,
+             private_key, remoteip):
+    """
+    Submits a reCAPTCHA request for verification. Returns RecaptchaResponse
+    for the request
 
+    recaptcha_response_field -- The value of recaptcha_response_field from the form
+    private_key -- your reCAPTCHA private key
+    remoteip -- the user's ip address
+    """
 
-        params = urllib.urlencode ({
-                'privatekey': encode_if_necessary(private_key),
-                'remoteip' :  encode_if_necessary(remoteip),
-                'challenge':  encode_if_necessary(recaptcha_challenge_field),
-                'response' :  encode_if_necessary(recaptcha_response_field),
-                })
+    request = urllib2.Request (
+        url = "%s/siteverify" % API_SSL_SERVER,
+        data = urllib.urlencode( {
+            'secret': private_key,
+            'response': recaptcha_response_field,
+            'remoteip': remoteip } ),
+        headers = {
+            "Content-type": "application/x-www-form-urlencoded",
+            "User-agent": "reCAPTCHA Python" }
+        )
+    try:
+        response = urllib2.urlopen(request)
+        response_data = json.loads(response.read().decode("utf-8"))
 
-
-        request = urllib2.Request (
-            url = "https://%s/recaptcha/api/verify" % VERIFY_SERVER,
-            data = params,
-            headers = {
-                "Content-type": "application/x-www-form-urlencoded",
-                "User-agent": "reCAPTCHA Python"
-                }
-            )
-        
-        httpresp = urllib2.urlopen (request)
-
-        return_values = httpresp.read ().splitlines ();
-        httpresp.close();
-
-        return_code = return_values [0]
-
-        if (return_code == "true"):
-            return RecaptchaResponse (is_valid=True)
+        if response_data['success'] == True:
+            return RecaptchaResponse( is_valid=True )
         else:
-            return RecaptchaResponse (is_valid=False, error_code = return_values [1])
+            if 'error-codes' in response_data:
+                error = encode_if_necessary(response_data['error-codes'])
+            else:
+                error = 'Unknown error'
+
+            return RecaptchaResponse(is_valid=False, error_code = ','.join(error))
+
+    except Exception, e:
+        return RecaptchaResponse( is_valid=False, error_code = 'request-failure: %s' % e)

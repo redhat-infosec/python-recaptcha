@@ -8,7 +8,7 @@ except ImportError:
 setup(name='recaptcha-client',
       version='2.0.0',
       url = "https://github.com/redhat-infosec/python-recaptcha",
-      author = "Ben Maurer, Richard Monk",
+      author = "Ben Maurer, Richard Monk, Andrea Veri",
       author_email = "rmonk@redhat.com",
       description = "A plugin for reCAPTCHA and reCAPTCHA Mailhide",
       long_description = """\

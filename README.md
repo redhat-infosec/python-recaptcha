@@ -28,7 +28,8 @@ diff --git a/Mailman/Cgi/listinfo.py b/Mailman/Cgi/listinfo.py
      replacements[''] = mlist.FormatBox('fullname', size=30)
  
 +    # Captcha
-+    replacements[''] = captcha.displayhtml(mm_cfg.RECAPTCHA_PUBLIC_KEY, use_ssl=True, version=2)
++    replacements['<mm-recaptcha-javascript>'] = captcha.displayhtml(mm_cfg.RECAPTCHA_PUBLIC_KEY, use_ssl=True, version=2)
++    replacements['<mm-recaptcha-script>'] = captcha.load_script(version=2)
 +
      # Do the expansion.
      doc.AddItem(mlist.ParseTags('listinfo.html', replacements, lang))

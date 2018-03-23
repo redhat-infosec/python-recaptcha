@@ -31,11 +31,12 @@ licensed under an MIT/X11 license.
         "Environment :: Web Environment",
         ],
 
-
-      packages = find_packages(),
+      packages = [
+        'recaptcha',
+        'recaptcha.client'
+      ],
 
       extras_require = {
         'mailhide' : ['pycrypto'],
-        },
-      namespace_packages = ['recaptcha'],
-      )
+        }
+)

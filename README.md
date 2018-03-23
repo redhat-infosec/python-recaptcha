@@ -54,12 +54,13 @@ diff --git a/Mailman/Cgi/subscribe.py b/Mailman/Cgi/subscribe.py
                              os.environ.get('REMOTE_ADDR',
                                             'unidentified origin'))
 
-+   # recaptcha
-+   captcha_response = captcha.v2submit(
-+       cgidata.getvalue('g-recaptcha-response', ""),
-+       mm_cfg.RECAPTCHA_PRIVATE_KEY,
-+       remote
++    # recaptcha
++    captcha_response = captcha.v2submit(
++        cgidata.getvalue('g-recaptcha-response', ""),
++        mm_cfg.RECAPTCHA_PRIVATE_KEY,
++        remote
 +    )
++
 +    if not captcha_response.is_valid:
 +        results.append(_('Invalid captcha: %s' % captcha_response.error_code))
 

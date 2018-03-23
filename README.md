@@ -11,7 +11,10 @@ for backwards compatibility and it's still marked as the default library option.
    recaptcha_challenge_field param)
 
 ## Examples (Mailman)
-```python
+Please note you may have to regenerate the patch below for it to apply correctly
+as the source files can be different across Mailman releases and installations.
+
+```git
 diff --git a/Mailman/Cgi/listinfo.py b/Mailman/Cgi/listinfo.py
 --- a/Mailman/Cgi/listinfo.py
 +++ b/Mailman/Cgi/listinfo.py

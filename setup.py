@@ -1,3 +1,4 @@
+import sys
 from setuptools import setup, find_packages
 
 setup(name='recaptcha-client',
@@ -38,5 +39,6 @@ Andrea Veri. It is licensed under an MIT/X11 license.
 
       extras_require = {
         'mailhide' : ['pycrypto'],
-        }
+        },
+      install_requires = ['simplejson'] if sys.version_info < (2, 6) else [],
 )

@@ -1,5 +1,8 @@
 import urllib2, urllib
-import simplejson as json
+try:
+    import json
+except ImportError:
+    import simplejson as json
 
 API_SSL_SERVER="https://www.google.com/recaptcha/api"
 API_SERVER="http://www.google.com/recaptcha/api"
